@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Basic FPS Demo</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #instructions {
+      position: absolute;
+      top: 20px;
+      width: 100%;
+      text-align: center;
+      color: white;
+      font-family: Arial, sans-serif;
+      font-size: 16px;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="instructions">
+    Click to play. WASD to move, mouse to look around.
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/examples/js/controls/PointerLockControls.js"></script>
+  <script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Pointer lock controls for FPS camera
+    const controls = new THREE.PointerLockControls(camera, document.body);
+
+    const instructions = document.getElementById('instructions');
+    instructions.addEventListener('click', () => {
+      controls.lock();
+    });
+
+    controls.addEventListener('lock', () => {
+      instructions.style.display = 'none';
+    });
+    controls.addEventListener('unlock', () => {
+      instructions.style.display = '';
+    });
+
+    scene.add(controls.getObject());
+
+    // Floor
+    const floorGeometry = new THREE.PlaneGeometry(100, 100);
+    const floorMaterial = new THREE.MeshBasicMaterial({color: 0x555555});
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    scene.add(floor);
+
+    // Simple walls (4 cubes)
+    const wallMaterial = new THREE.MeshBasicMaterial({color: 0x8888ff});
+    const wallThickness = 1;
+    const wallHeight = 5;
+    const wallLength = 20;
+
+    function createWall(x, z, rotY, length) {
+      const geometry = new THREE.BoxGeometry(length, wallHeight, wallThickness);
+      const mesh = new THREE.Mesh(geometry, wallMaterial);
+      mesh.position.set(x, wallHeight/2, z);
+      mesh.rotation.y = rotY;
+      scene.add(mesh);
+    }
+    // Four walls forming a room
+    createWall(0, -wallLength/2, 0, wallLength);
+    createWall(0, wallLength/2, 0, wallLength);
+    createWall(-wallLength/2, 0, Math.PI/2, wallLength);
+    createWall(wallLength/2, 0, Math.PI/2, wallLength);
+
+    // Movement variables
+    const move = {forward: false, backward: false, left: false, right: false};
+    const velocity = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+    const speed = 10;
+
+    function onKeyDown(e) {
+      switch(e.code) {
+        case 'ArrowUp':
+        case 'KeyW': move.forward = true; break;
+        case 'ArrowLeft':
+        case 'KeyA': move.left = true; break;
+        case 'ArrowDown':
+        case 'KeyS': move.backward = true; break;
+        case 'ArrowRight':
+        case 'KeyD': move.right = true; break;
+      }
+    }
+    function onKeyUp(e) {
+      switch(e.code) {
+        case 'ArrowUp':
+        case 'KeyW': move.forward = false; break;
+        case 'ArrowLeft':
+        case 'KeyA': move.left = false; break;
+        case 'ArrowDown':
+        case 'KeyS': move.backward = false; break;
+        case 'ArrowRight':
+        case 'KeyD': move.right = false; break;
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+
+    let prevTime = performance.now();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (controls.isLocked === true) {
+        const time = performance.now();
+        const delta = (time - prevTime) / 1000;
+
+        velocity.x -= velocity.x * 10.0 * delta;
+        velocity.z -= velocity.z * 10.0 * delta;
+
+        direction.z = Number(move.forward) - Number(move.backward);
+        direction.x = Number(move.right) - Number(move.left);
+        direction.normalize();
+
+        if (move.forward || move.backward) velocity.z -= direction.z * speed * delta;
+        if (move.left || move.right) velocity.x -= direction.x * speed * delta;
+
+        controls.moveRight(-velocity.x * delta);
+        controls.moveForward(-velocity.z * delta);
+
+        prevTime = time;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth/window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
